@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -122,6 +123,18 @@ export default function Dashboard() {
           testid="kpi-spese"
         />
       </div>
+
+      {condomini.length === 0 && (
+        <div className="card flex flex-wrap items-center justify-between gap-4 border-amber-200 bg-amber-50 p-5">
+          <div>
+            <p className="font-display font-bold text-amber-900">Nessun condominio nell'archivio di questo browser</p>
+            <p className="mt-1 text-sm text-amber-800">Inserisci il primo condominio per attivare unità, spese, rate e consuntivi.</p>
+          </div>
+          <Link to="/condomini" className="btn-primary" data-testid="link-dashboard-add-condominio">
+            + Nuovo condominio
+          </Link>
+        </div>
+      )}
 
       {/* Charts */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">

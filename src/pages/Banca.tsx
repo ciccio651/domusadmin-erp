@@ -11,7 +11,7 @@ export default function Banca() {
   const [tipoFilter,  setTipoFilter]  = useState('all');
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Omit<MovimentoBancario,'id'|'created_at'>>({
-    condominio_id: '', data: nowIso(), descrizione: '',
+    condominio_id: '', condominio_nome: '', data: nowIso(), descrizione: '',
     tipo: 'entrata', importo: 0, causale: '', iban_controparte: '',
   });
 
@@ -27,13 +27,13 @@ export default function Banca() {
 
   const save = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.condominio_id) { toast.error('Seleziona un condominio'); return; }
+    if (!form.condominio_id && !form.condominio_nome?.trim()) { toast.error('Seleziona o inserisci il nome del condominio'); return; }
     addMovimento({ ...form, id: newId(), importo: Number(form.importo), created_at: nowIso() });
     toast.success('Movimento registrato');
     setOpen(false);
   };
 
-  const cName = (id: string) => condomini.find(c => c.id === id)?.nome ?? '—';
+  const cName = (id: string, nome?: string) => condomini.find(c => c.id === id)?.nome ?? nome ?? '—';
 
   return (
     <div className="space-y-6">
@@ -102,7 +102,7 @@ export default function Banca() {
               {filtered.slice(0, 400).map(m => (
                 <tr key={m.id} className="tr-hover">
                   <td className="td font-mono-num text-xs text-slate-500">{m.data}</td>
-                  <td className="td text-xs text-slate-600 max-w-[140px] truncate">{cName(m.condominio_id)}</td>
+                  <td className="td text-xs text-slate-600 max-w-[140px] truncate">{cName(m.condominio_id, m.condominio_nome)}</td>
                   <td className="td text-sm">{m.descrizione}</td>
                   <td className="td text-xs text-slate-400">{m.causale}</td>
                   <td className="td text-center">
@@ -132,10 +132,14 @@ export default function Banca() {
             <form onSubmit={save} className="space-y-3">
               <div>
                 <label className="input-label">Condominio*</label>
-                <select required className="select" value={form.condominio_id} onChange={e => setForm({...form, condominio_id: e.target.value})}>
+                <select required={condomini.length > 0 && !form.condominio_nome} className="select" value={form.condominio_id} onChange={e => setForm({...form, condominio_id: e.target.value})}>
                   <option value="">Seleziona…</option>
                   {condomini.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
+                {condomini.length === 0 && <>
+                  <input required={!form.condominio_id} className="input mt-2" placeholder="Oppure inserisci il nome del condominio" value={form.condominio_nome} onChange={e => setForm({ ...form, condominio_nome: e.target.value })} />
+                  <p className="mt-1 text-xs text-amber-700">Non ci sono ancora condomìni registrati. Puoi inserire il nome manualmente oppure aggiungerlo dalla sezione Condomini.</p>
+                </>}
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div><label className="input-label">Data*</label><input required type="date" className="input" value={form.data} onChange={e => setForm({...form, data: e.target.value})} /></div>

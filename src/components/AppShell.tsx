@@ -5,6 +5,7 @@ import {
   FileBarChart2, AlertTriangle, FileText, LogOut,
   ChevronLeft, ChevronRight, FolderOpen, LayoutTemplate, Settings, Scale,
 } from 'lucide-react';
+import AIChatbot from '@/components/AIChatbot';
 
 const NAV_MAIN = [
   { to: '/',           icon: LayoutDashboard, label: 'Dashboard',         end: true,  tid: 'nav-dashboard'   },
@@ -149,6 +150,7 @@ export default function AppShell() {
           <Outlet />
         </main>
       </div>
+      <AIChatbot />
     </div>
   );
 }

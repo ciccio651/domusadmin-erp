@@ -56,6 +56,29 @@ export interface Fornitore {
   created_at: string;
 }
 
+export interface Avvocato {
+  id: string;
+  nome: string;
+  foro: string;
+  specialita: string;
+  email?: string;
+  telefono?: string;
+  created_at: string;
+}
+
+export type StatoAttoLegale = 'bozza' | 'inviato';
+
+export interface AttoLegale {
+  id: string;
+  titolo: string;
+  descrizione: string;
+  condominio_id: string;
+  unita_id?: string;
+  avvocato_id?: string;
+  stato: StatoAttoLegale;
+  created_at: string;
+}
+
 export interface Spesa {
   id: string;
   condominio_id: string;
@@ -73,6 +96,7 @@ export interface Spesa {
 export interface MovimentoBancario {
   id: string;
   condominio_id: string;
+  condominio_nome?: string;
   data: string;
   descrizione: string;
   tipo: TipoMovimento;

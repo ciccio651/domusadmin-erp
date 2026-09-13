@@ -1,7 +1,9 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type {
   Condominio, Unita, Fornitore, Spesa,
   MovimentoBancario, Rata,
+  Avvocato, AttoLegale,
 } from '@/types';
 import {
   MOCK_CONDOMINI, MOCK_UNITA, MOCK_FORNITORI,
@@ -16,6 +18,18 @@ interface Store {
   spese:      Spesa[];
   movimenti:  MovimentoBancario[];
   rate:       Rata[];
+  avvocati:   Avvocato[];
+  attiLegali: AttoLegale[];
+
+  // Avvocati
+  addAvvocato:    (a: Avvocato) => void;
+  updateAvvocato: (id: string, patch: Partial<Avvocato>) => void;
+  deleteAvvocato: (id: string) => void;
+
+  // Atti legali
+  addAttoLegale:    (a: AttoLegale) => void;
+  updateAttoLegale: (id: string, patch: Partial<AttoLegale>) => void;
+  deleteAttoLegale: (id: string) => void;
 
   // Condomini
   addCondominio:    (c: Condominio)            => void;
@@ -46,13 +60,15 @@ interface Store {
   deleteRata: (id: string)                => void;
 }
 
-export const useStore = create<Store>((set) => ({
+export const useStore = create<Store>()(persist((set) => ({
   condomini:  MOCK_CONDOMINI,
   unita:      MOCK_UNITA,
   fornitori:  MOCK_FORNITORI,
   spese:      MOCK_SPESE,
   movimenti:  MOCK_MOVIMENTI,
   rate:       MOCK_RATE,
+  avvocati:   [],
+  attiLegali: [],
 
   addCondominio: (c) =>
     set((s) => ({ condomini: [...s.condomini, c] })),
@@ -85,6 +101,18 @@ export const useStore = create<Store>((set) => ({
     set((s) => ({ fornitori: s.fornitori.map(f => f.id === id ? { ...f, ...patch } : f) })),
   deleteFornitore: (id) =>
     set((s) => ({ fornitori: s.fornitori.filter(f => f.id !== id) })),
+
+  addAvvocato: (a) => set((s) => ({ avvocati: [...s.avvocati, a] })),
+  updateAvvocato: (id, patch) =>
+    set((s) => ({ avvocati: s.avvocati.map(a => a.id === id ? { ...a, ...patch } : a) })),
+  deleteAvvocato: (id) =>
+    set((s) => ({ avvocati: s.avvocati.filter(a => a.id !== id) })),
+
+  addAttoLegale: (a) => set((s) => ({ attiLegali: [a, ...s.attiLegali] })),
+  updateAttoLegale: (id, patch) =>
+    set((s) => ({ attiLegali: s.attiLegali.map(a => a.id === id ? { ...a, ...patch } : a) })),
+  deleteAttoLegale: (id) =>
+    set((s) => ({ attiLegali: s.attiLegali.filter(a => a.id !== id) })),
 
   addSpesa:    (sp) => set((s) => ({ spese: [sp, ...s.spese] })),
   updateSpesa: (id, patch) =>
@@ -121,4 +149,12 @@ export const useStore = create<Store>((set) => ({
       };
     }),
   deleteRata: (id) => set((s) => ({ rate: s.rate.filter(r => r.id !== id) })),
+}), {
+  name: 'domusadmin-store',
+  partialize: (state) => ({
+    condomini: state.condomini,
+    unita: state.unita,
+    avvocati: state.avvocati,
+    attiLegali: state.attiLegali,
+  }),
 }));

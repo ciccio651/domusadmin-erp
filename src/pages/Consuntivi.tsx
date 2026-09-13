@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FileBarChart2, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 import { useStore } from '@/store/appStore';
 import { fmtEur, fmtNum, sumBy } from '@/utils/helpers';
 
@@ -93,10 +94,13 @@ export default function Consuntivi() {
             <option value="">Seleziona condominio…</option>
             {condomini.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
+          <Link to="/condomini" className="btn-secondary text-xs" data-testid="link-add-consuntivo-condo">
+            + Nuovo condominio
+          </Link>
           <select className="select w-28" value={anno} onChange={e => setAnno(Number(e.target.value))} data-testid="select-anno">
             {ANNI.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-          <button onClick={genera} disabled={loading} className="btn-primary" data-testid="btn-genera-consuntivo">
+          <button onClick={genera} disabled={loading || !cid} className="btn-primary" data-testid="btn-genera-consuntivo">
             <FileBarChart2 className="w-4 h-4" />
             {loading ? 'Elaborazione…' : 'Genera consuntivo'}
           </button>
@@ -106,6 +110,11 @@ export default function Consuntivi() {
             </button>
           )}
         </div>
+        {condomini.length === 0 && (
+          <p className="mt-3 text-xs text-amber-700">
+            Non hai ancora inserito condomìni. Aggiungine uno per generare il consuntivo e visualizzarlo nella tendina.
+          </p>
+        )}
       </div>
 
       {data && (

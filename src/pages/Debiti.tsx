@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Wallet, FileText, AlertTriangle, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 import { useStore } from '@/store/appStore';
 import { fmtEur, fmtNum, nowIso, sumBy } from '@/utils/helpers';
 import { openWhatsApp, messaggioSollecito } from '@/utils/whatsapp';
@@ -104,6 +105,9 @@ export default function Debiti() {
           <option value="all">Tutti i condomini</option>
           {condomini.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
         </select>
+        <Link to="/condomini" className="btn-secondary text-xs" data-testid="link-add-debiti-condo">
+          + Nuovo condominio
+        </Link>
       </div>
 
       {/* Stats */}
@@ -176,7 +180,8 @@ export default function Debiti() {
               {insolute.length === 0 && (
                 <tr><td colSpan={8} className="td text-center py-12 text-slate-400">
                   <AlertTriangle className="w-6 h-6 mx-auto mb-2 opacity-30" />
-                  Nessuna rata insoluta
+                  <p>Nessuna rata insoluta</p>
+                  {condomini.length === 0 && <Link to="/condomini" className="mt-2 inline-block text-blue-700 hover:underline">Aggiungi il primo condominio</Link>}
                 </td></tr>
               )}
             </tbody>

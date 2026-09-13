@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import {
   Scale, FileText, Gavel, AlertTriangle, Send,
-  Clock, CheckCircle2, Building2, ChevronRight, X,
+  Clock, CheckCircle2, Building2, ChevronRight, X, Plus, Pencil, Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/store/appStore';
-import { fmtEur } from '@/utils/helpers';
+import { fmtEur, newId, nowIso } from '@/utils/helpers';
+import type { AttoLegale, Avvocato } from '@/types';
 
 // ── Tipi documento legale ─────────────────────────────────────────────────
 const TIPI_ATTO = [
@@ -50,18 +51,31 @@ interface PraticaForm {
   avvocato: string;
 }
 
-// Mock avvocati convenzionati
-const AVVOCATI = [
-  { id: 'av1', nome: 'Avv. Marco Ferretti',  foro: 'Milano',  specialita: 'Diritto condominiale' },
-  { id: 'av2', nome: 'Avv. Laura Conti',     foro: 'Roma',    specialita: 'Recupero crediti'     },
-  { id: 'av3', nome: 'Avv. Giorgio Riva',    foro: 'Torino',  specialita: 'Diritto immobiliare'  },
-  { id: 'av4', nome: 'Avv. Sofia Martini',   foro: 'Napoli',  specialita: 'Diritto condominiale' },
-];
+type AvvocatoForm = Omit<Avvocato, 'id' | 'created_at'>;
+type AttoLegaleForm = Omit<AttoLegale, 'id' | 'created_at' | 'stato'>;
+
+const EMPTY_AVVOCATO: AvvocatoForm = {
+  nome: '', foro: '', specialita: '', email: '', telefono: '',
+};
+
+const EMPTY_ATTO: AttoLegaleForm = {
+  titolo: '', descrizione: '', condominio_id: '', unita_id: '', avvocato_id: '',
+};
 
 export default function Legale() {
-  const { rate, unita, condomini } = useStore();
+  const {
+    rate, unita, condomini, avvocati,
+    addAvvocato, updateAvvocato, deleteAvvocato,
+    attiLegali, addAttoLegale, updateAttoLegale, deleteAttoLegale,
+  } = useStore();
   const [condoFilter, setCondoFilter] = useState('all');
   const [praticaForm, setPraticaForm] = useState<PraticaForm | null>(null);
+  const [avvocatoForm, setAvvocatoForm] = useState<AvvocatoForm>({ ...EMPTY_AVVOCATO });
+  const [editingAvvocato, setEditingAvvocato] = useState<string | null>(null);
+  const [showAvvocatoForm, setShowAvvocatoForm] = useState(false);
+  const [attoForm, setAttoForm] = useState<AttoLegaleForm>({ ...EMPTY_ATTO });
+  const [editingAtto, setEditingAtto] = useState<string | null>(null);
+  const [showAttoForm, setShowAttoForm] = useState(false);
   const [inviate, setInviate] = useState<Set<string>>(new Set());
 
   // Rate insolute rilevanti per recupero legale
@@ -86,16 +100,93 @@ export default function Legale() {
     residuo >= 500 ? TIPI_ATTO[0] : residuo >= 200 ? TIPI_ATTO[1] : TIPI_ATTO[2];
 
   const apriPratica = (rataId: string, tipo: TipoAttoId) => {
-    setPraticaForm({ tipo, rata_id: rataId, note: '', avvocato: AVVOCATI[0].id });
+    setPraticaForm({ tipo, rata_id: rataId, note: '', avvocato: avvocati[0]?.id ?? '' });
   };
 
   const inviaPratica = (e: React.FormEvent) => {
     e.preventDefault();
     if (!praticaForm) return;
     setInviate(prev => new Set(prev).add(praticaForm.rata_id));
-    const av = AVVOCATI.find(a => a.id === praticaForm.avvocato);
+    const av = avvocati.find(a => a.id === praticaForm.avvocato);
     toast.success(`Pratica inviata a ${av?.nome ?? 'avvocato'} — conferma via email attesa`);
     setPraticaForm(null);
+  };
+
+  const chiudiFormAvvocato = () => {
+    setAvvocatoForm({ ...EMPTY_AVVOCATO });
+    setEditingAvvocato(null);
+    setShowAvvocatoForm(false);
+  };
+
+  const salvaAvvocato = (e: React.FormEvent) => {
+    e.preventDefault();
+    const dati = {
+      ...avvocatoForm,
+      email: avvocatoForm.email || undefined,
+      telefono: avvocatoForm.telefono || undefined,
+    };
+    if (editingAvvocato) {
+      updateAvvocato(editingAvvocato, dati);
+      toast.success('Avvocato aggiornato');
+    } else {
+      addAvvocato({ ...dati, id: newId(), created_at: nowIso() });
+      toast.success('Avvocato aggiunto');
+    }
+    chiudiFormAvvocato();
+  };
+
+  const rimuoviAvvocato = (avvocato: Avvocato) => {
+    if (!window.confirm(`Eliminare ${avvocato.nome}?`)) return;
+    deleteAvvocato(avvocato.id);
+    toast.success('Avvocato eliminato');
+  };
+
+  const chiudiFormAtto = () => {
+    setAttoForm({ ...EMPTY_ATTO });
+    setEditingAtto(null);
+    setShowAttoForm(false);
+  };
+
+  const salvaAtto = (e: React.FormEvent) => {
+    e.preventDefault();
+    const dati = {
+      ...attoForm,
+      unita_id: attoForm.unita_id || undefined,
+      avvocato_id: attoForm.avvocato_id || undefined,
+    };
+    if (editingAtto) {
+      updateAttoLegale(editingAtto, dati);
+      toast.success('Atto aggiornato');
+    } else {
+      addAttoLegale({ ...dati, id: newId(), stato: 'bozza', created_at: nowIso() });
+      toast.success('Atto aggiunto');
+    }
+    chiudiFormAtto();
+  };
+
+  const rimuoviAtto = (atto: AttoLegale) => {
+    if (!window.confirm(`Eliminare l'atto "${atto.titolo}"?`)) return;
+    deleteAttoLegale(atto.id);
+    toast.success('Atto eliminato');
+  };
+
+  const avviaModificaAtto = (atto: AttoLegale) => {
+    setEditingAtto(atto.id);
+    setAttoForm({
+      titolo: atto.titolo,
+      descrizione: atto.descrizione,
+      condominio_id: atto.condominio_id,
+      unita_id: atto.unita_id ?? '',
+      avvocato_id: atto.avvocato_id ?? '',
+    });
+    setShowAttoForm(true);
+  };
+
+  const attoCondominio = (id: string) => condomini.find(c => c.id === id)?.nome ?? 'Condominio non trovato';
+  const attoUnita = (id?: string) => {
+    if (!id) return 'Tutti i condòmini';
+    const unitaInfo = unita.find(u => u.id === id);
+    return unitaInfo ? `Int. ${unitaInfo.interno} — ${unitaInfo.proprietario}` : 'Condòmino non trovato';
   };
 
   return (
@@ -136,6 +227,45 @@ export default function Legale() {
             avvocati convenzionati. <span className="font-semibold">Funzione in sviluppo.</span>
           </p>
         </div>
+      </div>
+
+      {/* Atti personalizzati */}
+      <div className="card p-5">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div>
+            <p className="font-semibold text-slate-700 text-sm">Atti legali personalizzati</p>
+            <p className="text-xs text-slate-400 mt-0.5">Inserisci qualsiasi tipo di atto e associalo al condominio e al condòmino interessato.</p>
+          </div>
+          <button type="button" onClick={() => { setAttoForm({ ...EMPTY_ATTO, condominio_id: condomini[0]?.id ?? '' }); setEditingAtto(null); setShowAttoForm(true); }} className="btn-primary text-xs" data-testid="btn-add-atto">
+            <Plus className="w-3.5 h-3.5" /> Nuovo atto
+          </button>
+        </div>
+        {attiLegali.length > 0 ? (
+          <div className="space-y-2">
+            {attiLegali.map(atto => (
+              <div key={atto.id} className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-slate-800 truncate">{atto.titolo}</p>
+                  <p className="text-xs text-slate-500 mt-0.5 truncate">{attoCondominio(atto.condominio_id)} · {attoUnita(atto.unita_id)}</p>
+                  {atto.descrizione && <p className="text-xs text-slate-400 mt-1 line-clamp-2">{atto.descrizione}</p>}
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  <button type="button" onClick={() => avviaModificaAtto(atto)} className="btn-ghost text-xs px-2 py-1" data-testid={`btn-edit-atto-${atto.id}`}>
+                    <Pencil className="w-3 h-3" /> Modifica
+                  </button>
+                  <button type="button" onClick={() => rimuoviAtto(atto)} className="btn-ghost text-xs px-2 py-1 text-rose-600 hover:bg-rose-50" data-testid={`btn-delete-atto-${atto.id}`}>
+                    <Trash2 className="w-3 h-3" /> Elimina
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+            Nessun atto personalizzato. Crea il primo atto per iniziare a organizzare le pratiche.
+            {condomini.length === 0 && <span className="block mt-1 text-amber-700">Prima aggiungi almeno un condominio dalla sezione Condomini per poterlo associare.</span>}
+          </div>
+        )}
       </div>
 
       {/* KPI */}
@@ -261,19 +391,140 @@ export default function Legale() {
         </div>
       </div>
 
+      {/* Modal atto personalizzato */}
+      {showAttoForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={chiudiFormAtto} />
+          <form onSubmit={salvaAtto} className="relative bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-lg p-6 space-y-4 animate-fade-up">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display font-bold text-xl">{editingAtto ? 'Modifica atto' : 'Nuovo atto legale'}</h2>
+                <p className="text-xs text-slate-400 mt-1">L'atto sarà associato al condominio selezionato.</p>
+              </div>
+              <button type="button" onClick={chiudiFormAtto} className="btn-ghost p-1" aria-label="Chiudi">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div>
+              <label className="input-label">Titolo atto *</label>
+              <input required className="input" value={attoForm.titolo} onChange={e => setAttoForm({ ...attoForm, titolo: e.target.value })} placeholder="Ricorso per decreto ingiuntivo" autoFocus />
+            </div>
+            <div>
+              <label className="input-label">Descrizione</label>
+              <textarea className="input min-h-[82px] resize-none" value={attoForm.descrizione} onChange={e => setAttoForm({ ...attoForm, descrizione: e.target.value })} placeholder="Descrivi il contenuto o la finalità dell'atto..." />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="input-label">Condominio *</label>
+                <select required className="select" value={attoForm.condominio_id} onChange={e => setAttoForm({ ...attoForm, condominio_id: e.target.value, unita_id: '' })}>
+                  <option value="">Seleziona condominio</option>
+                  {condomini.map(condo => <option key={condo.id} value={condo.id}>{condo.nome}</option>)}
+                </select>
+                {condomini.length === 0 && <p className="mt-1 text-xs text-amber-700">Nessun condominio disponibile. Vai in “Condomini” e aggiungine uno.</p>}
+              </div>
+              <div>
+                <label className="input-label">Condòmino / unità</label>
+                <select className="select" value={attoForm.unita_id} onChange={e => setAttoForm({ ...attoForm, unita_id: e.target.value })} disabled={!attoForm.condominio_id}>
+                  <option value="">Tutti i condòmini</option>
+                  {unita.filter(u => u.condominio_id === attoForm.condominio_id).map(unit => (
+                    <option key={unit.id} value={unit.id}>Int. {unit.interno} — {unit.proprietario}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="input-label">Avvocato assegnatario</label>
+              <select className="select" value={attoForm.avvocato_id} onChange={e => setAttoForm({ ...attoForm, avvocato_id: e.target.value })}>
+                <option value="">Non assegnato</option>
+                {avvocati.map(avvocato => <option key={avvocato.id} value={avvocato.id}>{avvocato.nome} — {avvocato.foro}</option>)}
+              </select>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button type="button" onClick={chiudiFormAtto} className="btn-secondary flex-1">Annulla</button>
+              <button type="submit" disabled={!attoForm.condominio_id} className="btn-primary flex-1">Salva atto</button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Avvocati convenzionati */}
       <div className="card p-5">
-        <p className="font-semibold text-slate-700 text-sm mb-4">Avvocati convenzionati</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {AVVOCATI.map(av => (
-            <div key={av.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 flex flex-col gap-1">
-              <p className="font-semibold text-slate-800 text-sm">{av.nome}</p>
-              <p className="text-xs text-slate-500">Foro di {av.foro}</p>
-              <span className="badge badge-blue text-[10px] w-fit mt-1">{av.specialita}</span>
-            </div>
-          ))}
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div>
+            <p className="font-semibold text-slate-700 text-sm">Avvocati convenzionati</p>
+            <p className="text-xs text-slate-400 mt-0.5">Gestisci i professionisti disponibili per l'invio delle pratiche.</p>
+          </div>
+          <button type="button" onClick={() => { setAvvocatoForm({ ...EMPTY_AVVOCATO }); setEditingAvvocato(null); setShowAvvocatoForm(true); }} className="btn-primary text-xs" data-testid="btn-add-avvocato">
+            <Plus className="w-3.5 h-3.5" /> Nuovo avvocato
+          </button>
         </div>
+        {avvocati.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {avvocati.map(av => (
+              <div key={av.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 flex flex-col gap-1">
+                <p className="font-semibold text-slate-800 text-sm">{av.nome}</p>
+                <p className="text-xs text-slate-500">Foro di {av.foro}</p>
+                <span className="badge badge-blue text-[10px] w-fit mt-1">{av.specialita}</span>
+                <div className="flex gap-1 mt-2 pt-2 border-t border-slate-200">
+                  <button type="button" onClick={() => { setEditingAvvocato(av.id); setAvvocatoForm({ nome: av.nome, foro: av.foro, specialita: av.specialita, email: av.email ?? '', telefono: av.telefono ?? '' }); setShowAvvocatoForm(true); }} className="btn-ghost text-xs px-2 py-1" data-testid={`btn-edit-avvocato-${av.id}`}>
+                    <Pencil className="w-3 h-3" /> Modifica
+                  </button>
+                  <button type="button" onClick={() => rimuoviAvvocato(av)} className="btn-ghost text-xs px-2 py-1 text-rose-600 hover:bg-rose-50" data-testid={`btn-delete-avvocato-${av.id}`}>
+                    <Trash2 className="w-3 h-3" /> Elimina
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+            Nessun avvocato configurato. Aggiungi il primo professionista per poter inviare una pratica.
+          </div>
+        )}
       </div>
+
+      {/* Modal avvocato */}
+      {showAvvocatoForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={chiudiFormAvvocato} />
+          <form onSubmit={salvaAvvocato} className="relative bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-md p-6 space-y-4 animate-fade-up">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display font-bold text-xl">{editingAvvocato ? 'Modifica avvocato' : 'Nuovo avvocato'}</h2>
+              <button type="button" onClick={chiudiFormAvvocato} className="btn-ghost p-1" aria-label="Chiudi">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div>
+              <label className="input-label">Nome e cognome *</label>
+              <input required className="input" value={avvocatoForm.nome} onChange={e => setAvvocatoForm({ ...avvocatoForm, nome: e.target.value })} placeholder="Avv. Mario Rossi" autoFocus />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="input-label">Foro *</label>
+                <input required className="input" value={avvocatoForm.foro} onChange={e => setAvvocatoForm({ ...avvocatoForm, foro: e.target.value })} placeholder="Milano" />
+              </div>
+              <div>
+                <label className="input-label">Specialità *</label>
+                <input required className="input" value={avvocatoForm.specialita} onChange={e => setAvvocatoForm({ ...avvocatoForm, specialita: e.target.value })} placeholder="Diritto condominiale" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="input-label">Email</label>
+                <input type="email" className="input" value={avvocatoForm.email} onChange={e => setAvvocatoForm({ ...avvocatoForm, email: e.target.value })} placeholder="studio@email.it" />
+              </div>
+              <div>
+                <label className="input-label">Telefono</label>
+                <input className="input" value={avvocatoForm.telefono} onChange={e => setAvvocatoForm({ ...avvocatoForm, telefono: e.target.value })} placeholder="02 1234567" />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button type="button" onClick={chiudiFormAvvocato} className="btn-secondary flex-1">Annulla</button>
+              <button type="submit" className="btn-primary flex-1">Salva avvocato</button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Modal pratica */}
       {praticaForm && (() => {
@@ -330,7 +581,7 @@ export default function Legale() {
                     onChange={e => setPraticaForm({ ...praticaForm, avvocato: e.target.value })}
                     data-testid="select-avvocato"
                   >
-                    {AVVOCATI.map(av => (
+                    {avvocati.map(av => (
                       <option key={av.id} value={av.id}>{av.nome} — {av.foro}</option>
                     ))}
                   </select>
