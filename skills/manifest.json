@@ -1,0 +1,12 @@
+{
+  "name": "DomusAdmin ERP",
+  "description": "Skill set for condominium administration, legal recovery, document generation and financial reporting.",
+  "skills": [
+    "domusadmin-condomini",
+    "domusadmin-legale",
+    "domusadmin-modulistica",
+    "domusadmin-finanza"
+  ],
+  "agent_url": "https://domusadmin-erp.pages.dev",
+  "api_endpoint": "https://domusadmin-erp.pages.dev/api/chat"
+}
